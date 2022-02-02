@@ -20,7 +20,15 @@ INSERT INTO product(name) VALUES ('Playstation') -- id 1
 INSERT INTO category(name) VALUES ('Konsoler') -- id 1
 INSERT INTO product_category (product_id, category_id) VALUES (1, 1)
 
+-- kategorier: id 2 Datorer id 1 konsoler id 7 kampanjer
+
+
 select product_id, category_id, c.name, p.name from category c
 join product_category pc on c.id = pc.category_id
 join product p on p.id = pc.product_id
+where p.id = 1
+
+select * from product p
+join product_category pc on p.id = pc.product_id
+join category c on c.id = pc.category_id
 where p.id = 1
