@@ -12,8 +12,8 @@ CREATE TABLE product_category (
   product_id INT,
   category_id INT,
   PRIMARY KEY (product_id, category_id),
-  CONSTRAINT fk_product FOREIGN KEY(product_id) REFERENCES product(id),
-  CONSTRAINT fk_category FOREIGN KEY(category_id) REFERENCES category(id)
+  CONSTRAINT fk_product FOREIGN KEY(product_id) REFERENCES product(id) ON DELETE CASCADE,
+  CONSTRAINT fk_category FOREIGN KEY(category_id) REFERENCES category(id) ON DELETE CASCADE
 );
 
 INSERT INTO product(name) VALUES ('Playstation') -- id 1

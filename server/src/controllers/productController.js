@@ -1,13 +1,19 @@
-import client, { query } from '../config/db.js';
+import { query } from '../config/db.js';
+
+export const getAllProducts = async (req, res) => {
+  const { rows } = await query(`SELECT * FROM product`);
+  return res.status(200).json(rows);
+}
 
 export const getProduct = async (req, res) => {
   const { id } = req.params;
   const { rows } = await query(
-    `select p.name as productName, c.name as categoryName, product_id, category_id from product p
-    join product_category pc on p.id = pc.product_id
-    join category c on c.id = pc.category_id
+    `select p.name as productName, c.name as categoryName, p.id as product_id, category_id from product p
+    left join product_category pc on p.id = pc.product_id
+    left join category c on c.id = pc.category_id
     where p.id = $1`, [id]
   );
+  console.log(rows);
   if (rows.length === 0) {
     res.status(404).send();
     return;
@@ -31,7 +37,7 @@ export const createProduct = async (req, res) => {
     }
   } catch (err) {
     await query('ROLLBACK');
-    throw (err);
+    return res.status(500).send();
   } finally {
     query(`COMMIT`);
   }
@@ -40,7 +46,62 @@ export const createProduct = async (req, res) => {
 }
 
 export const editProduct = async (req, res) => {
+  const { id } = req.params;
+  const { name: newName, categories: categoryToDb } = req.body;
 
+  const { rows } = await query(
+    `SELECT p.id, p.name, pc.category_id from product p
+    left join product_category pc on pc.product_id = p.id
+    where p.id = $1`, [id]);
+
+  const oldName = rows[0].name;
+  const categoryFromDb = rows.map((row) => row.category_id);
+
+  categoryToDb.sort((a, b) => a - b);
+  categoryFromDb.sort((a, b) => a - b);
+
+  const addToDb = categoryToDb
+    .filter((n) => !categoryFromDb.some((n1) => n1 === n));
+  const removeFromDb = categoryFromDb
+    .filter((n) => !categoryToDb.some((n1) => n1 === n));
+
+  if (addToDb.length === 0 &&
+    removeFromDb.length === 0 &&
+    newName === oldName) {
+      res.status(204).send();
+      return;
+  }
+  try {
+    await query('BEGIN');
+    if (newName !== oldName) {
+      await query(`UPDATE product set name = $1 where id = $2`, [newName, id]);
+    }
+    if (removeFromDb.length > 0 && !!removeFromDb[0]) {
+      for (const categoryId of removeFromDb) {
+        await query(`DELETE FROM product_category 
+          where product_id = $1 AND category_id = $2`,
+          [id, categoryId]);
+      }
+    }
+    if (addToDb.length > 0) {
+      for (const categoryId of addToDb) {
+        await query(`INSERT INTO product_category (product_id, category_id)
+          VALUES ($1, $2)`,
+          [id, categoryId]);
+      }
+    }
+    await query(`COMMIT`)
+  } catch (error) {
+    await query(`ROLLBACK`);
+    console.log(error);
+    return res.status(500).send();
+  }
+
+  // update product set name = 'playstation' where id = 1 returning name
+  // await query('BEGIN');
+
+
+  res.status(200).send();
 }
 
 export const removeProduct = async (req, res) => {
